@@ -28,7 +28,7 @@ import com.google.gwt.xml.client.XMLParser;
  *
  */
 public class XmlViewerEntryPoint implements EntryPoint {
-
+	private CellTree t;
 
 	@Override
 	public void onModuleLoad() {
@@ -37,8 +37,29 @@ public class XmlViewerEntryPoint implements EntryPoint {
 
 		Document rootValue = XMLParser.parse("<zones><zone name='Bedrooms' id='6'><sensor id='1' name='Hallway'>string content!</sensor><sensor id='2' name='Master'></sensor></zone><zone name='Living Area' id='8'><sensor id='3' /></zone><zone name='Garage' id='9'><sensor id='4' /></zone><zone name='Basement' id='10'><sensor id='5' /></zone></zones>");
 
-		CellTree t = new CellTree(viewModel, rootValue);
+		t = new CellTree(viewModel, rootValue);
 		RootPanel.get().add(t);
+
+
+	}
+
+	public void validate() {
+		Document d = (Document)t.getRootTreeNode().getValue();
+
+
+		//pass to server
+		d.toString();
+
+
+	}
+	public void save() {
+		Document d = (Document)t.getRootTreeNode().getValue();
+
+
+		//pass to server
+		d.toString();
+
+
 	}
 
 }

@@ -16,7 +16,7 @@
  */
 package com.colinalworth.xmlview.client;
 
-import com.colinalworth.xmlview.client.tree.XmlTreeViewModel;
+import com.colinalworth.xmlview.client.XmlTreeViewModel;
 import com.colinalworth.xmlview.client.validator.XmlValidator;
 import com.colinalworth.xmlview.client.validator.XmlValidator.SchemaURL;
 import com.google.gwt.core.client.EntryPoint;

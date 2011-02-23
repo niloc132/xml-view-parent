@@ -14,7 +14,7 @@
  *  limitations under the License.
  *
  */
-package com.colinalworth.xmlview.client.tree;
+package com.colinalworth.xmlview.client;
 
 import java.util.ArrayList;
 import java.util.List;

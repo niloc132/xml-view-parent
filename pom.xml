@@ -58,13 +58,25 @@
 			<version>${gwt.version}</version>
 			<scope>provided</scope>
 		</dependency>
+		<!--  GWT DEV TODO: Move this to another project/module -->
+		<dependency>
+			<groupId>com.google.gwt</groupId>
+			<artifactId>gwt-dev</artifactId>
+			<version>${gwt.version}</version>
+			<scope>provided</scope>
+		</dependency>
 		<!-- GWT Dependency Injection -->
 		<dependency>
 			<groupId>com.googlecode.gwt.inject</groupId>
 			<artifactId>gin</artifactId>
 			<version>1.1-SNAPSHOT</version>
 		</dependency>
-
+		<dependency>
+			<groupId>org.json</groupId>
+			<artifactId>json</artifactId>
+			<version>20090211</version>
+			<scope>provided</scope><!-- Not truely provided, but needed just for the generators -->
+		</dependency>
 
 		<!-- Bean Validation for GWT's Request Factory <dependency> <groupId>javax.validation</groupId> 
 			<artifactId>validation-api</artifactId> <version>1.0.0.GA</version> </dependency> 
@@ -85,6 +97,11 @@
 			<artifactId>junit</artifactId>
 			<version>4.8.2</version>
 			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>com.sun.xsom</groupId>
+			<artifactId>xsom</artifactId>
+			<version>20100725</version>
 		</dependency>
 	</dependencies>
 

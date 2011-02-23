@@ -8,6 +8,10 @@
 	
 	<inherits name='com.google.gwt.inject.Inject' />
 	
+	<generate-with class="com.colinalworth.xmlview.rebind.XmlValidatorGenerator">
+		<when-type-assignable class="com.colinalworth.xmlview.client.validator.XmlValidator"/>
+	</generate-with>
+	
 	<source path="client" />
 	<source path="shared" />
 	<entry-point class="com.colinalworth.xmlview.client.XmlViewerEntryPoint" />

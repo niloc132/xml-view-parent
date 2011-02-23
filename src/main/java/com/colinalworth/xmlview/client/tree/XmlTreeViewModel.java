@@ -19,28 +19,29 @@ package com.colinalworth.xmlview.client.tree;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.colinalworth.xmlview.client.validator.AcceptAllXmlValidator;
+import com.colinalworth.xmlview.client.validator.XmlValidator;
 import com.google.gwt.cell.client.AbstractEditableCell;
 import com.google.gwt.cell.client.Cell;
-import com.google.gwt.cell.client.CompositeCell;
-import com.google.gwt.cell.client.FieldUpdater;
-import com.google.gwt.cell.client.HasCell;
-import com.google.gwt.cell.client.TextCell;
 import com.google.gwt.cell.client.ValueUpdater;
 import com.google.gwt.core.client.GWT;
+import com.google.gwt.dom.client.InputElement;
 import com.google.gwt.dom.client.NativeEvent;
 import com.google.gwt.safehtml.client.SafeHtmlTemplates;
-import com.google.gwt.safehtml.client.SafeHtmlTemplates.Template;
 import com.google.gwt.safehtml.shared.SafeHtml;
 import com.google.gwt.safehtml.shared.SafeHtmlBuilder;
-import com.google.gwt.safehtml.shared.SafeHtmlUtils;
-import com.google.gwt.text.shared.SafeHtmlRenderer;
+import com.google.gwt.user.client.Window;
 import com.google.gwt.view.client.ListDataProvider;
 import com.google.gwt.view.client.TreeViewModel;
 import com.google.gwt.xml.client.Attr;
+import com.google.gwt.xml.client.CDATASection;
 import com.google.gwt.xml.client.CharacterData;
+import com.google.gwt.xml.client.Comment;
 import com.google.gwt.xml.client.Document;
 import com.google.gwt.xml.client.Element;
+import com.google.gwt.xml.client.NamedNodeMap;
 import com.google.gwt.xml.client.Node;
+import com.google.gwt.xml.client.NodeList;
 import com.google.gwt.xml.client.Text;
 
 /**
@@ -48,67 +49,34 @@ import com.google.gwt.xml.client.Text;
  *
  */
 public class XmlTreeViewModel implements TreeViewModel {
-	private Cell<Node> nodeCell;
 
+	private final XmlValidator validator;
+	private final ElementCell nodeCell;
 
 	/**
 	 * 
 	 */
 	public XmlTreeViewModel() {
-		List<HasCell<Node, ?>> cells = new ArrayList<HasCell<Node,?>>();
-		HasCell<Node, String> tagName = new HasCell<Node, String>() {
+		this(new AcceptAllXmlValidator());
+	}
+	public XmlTreeViewModel(XmlValidator validator) {
+		this.validator = validator;
 
-			@Override
-			public String getValue(Node object) {
-				return object.getNodeName();
-			}
-
-			@Override
-			public FieldUpdater<Node, String> getFieldUpdater() {
-				return null;
-			}
-
-			@Override
-			public Cell<String> getCell() {
-				return new TextCell(new SafeHtmlRenderer<String>() {
-					@Override
-					public void render(String object, SafeHtmlBuilder builder) {
-						builder.appendEscaped("<").appendEscaped(object).appendEscaped(">");
-					}
-
-					@Override
-					public SafeHtml render(String object) {
-						return SafeHtmlUtils.fromString("<" + object + ">");
-					}
-				});
-			}
-		};
-		//cells.add(tagName);
-		HasCell<Node, Node> element = new HasCell<Node, Node>() {
-			@Override
-			public Cell<Node> getCell() {
-				return new ElementCell();
-			}
-
-			@Override
-			public FieldUpdater<Node, Node> getFieldUpdater() {
-				return null;
-			}
-
-			@Override
-			public Node getValue(Node object) {
-				return object;
-			}
-		};
-		cells.add(element);
-
-		nodeCell = new CompositeCell<Node>(cells);
+		nodeCell = new ElementCell();
 	}
 	@Override
 	public <T> NodeInfo<?> getNodeInfo(T value) {
-		Node node = (Node)value;
-		ListDataProvider<Node> dataProvider = new ListDataProvider<Node>(getChildren(node));
-		return new DefaultNodeInfo<Node>(dataProvider, nodeCell);
+		final Node node = (Node)value;
+		final ListDataProvider<Node> dataProvider = new ListDataProvider<Node>(getChildren(node));
+		ValueUpdater<Node> parentUpdater = new ValueUpdater<Node>() {
+			@Override
+			public void update(Node value) {
+				dataProvider.setList(getChildren(node));
+				//dataProvider.refresh();//shouldn't be necessary...
+			}
+		};
+		DefaultNodeInfo<Node> nodeInfo = new DefaultNodeInfo<Node>(dataProvider, nodeCell, null, parentUpdater);
+		return nodeInfo;
 	}
 
 	@Override
@@ -130,7 +98,7 @@ public class XmlTreeViewModel implements TreeViewModel {
 
 		if (node instanceof Element) {
 			for (int i = 0; i < node.getAttributes().getLength(); i++) {
-				list.add(node.getAttributes().item(i));
+				list.add(WrappedAttr.wrap((Attr)node.getAttributes().item(i), (Element)node));
 			}
 		}
 		for (int i = 0; i < node.getChildNodes().getLength(); i++) {
@@ -140,28 +108,44 @@ public class XmlTreeViewModel implements TreeViewModel {
 		return list;
 	}
 	private static class ViewState {
-		enum Section { TagName, AttributeName, AttributeValue, Content, None }
+		enum Section { 
+			TagName, AttributeName, AttributeValue, Content, None;
+			public static Section getViewState(com.google.gwt.dom.client.Element elt, Node node) {
+				if (node instanceof Element) {
+					return Section.TagName;
+				} else if (node instanceof Attr) {
+					return elt.getClassName().contains("attrName") ? Section.AttributeName: Section.AttributeValue;
+				} else if (node instanceof CharacterData) {
+					return Section.Content;
+				}
+				return Section.None;
+			}
+		}
 		public Section section;
 		//public String sectionName;
 
 		public String value;
 	}
-	public static class ElementCell extends AbstractEditableCell<Node, ViewState> {
-		interface Template extends SafeHtmlTemplates {
-			@Template("<span>&lt;<input type=\"text\" value=\"{0}\" />&gt;</span>")
-			SafeHtml element(String nodeName);
-			@Template("<span><input type=\"text\" value=\"{0}\" /> = <input type=\"text\" value=\"{1}\" /></span>")
-			SafeHtml attribute(String name, String value);
-			@Template("<span>#text <textarea>{0}</textarea></span>")
-			SafeHtml text(String contents);
-			@Template("<span>#cdata <textarea>{0}</textarea></span>")
-			SafeHtml cdata(String contents);
-		}
-		private static Template template;
+	interface Template extends SafeHtmlTemplates {
+		@SafeHtmlTemplates.Template("<span>&lt;<input type=\"text\" value=\"{0}\" />&gt;</span>")
+		SafeHtml element(String nodeName);
+		@SafeHtmlTemplates.Template("<span><input class=\"attrName\" type=\"text\" value=\"{0}\" /> = <input class=\"attrValue\" type=\"text\" value=\"{1}\" /></span>")
+		SafeHtml attribute(String name, String value);
+		@SafeHtmlTemplates.Template("<span>#text <textarea>{0}</textarea></span>")
+		SafeHtml text(String contents);
+		@SafeHtmlTemplates.Template("<span>#cdata <textarea>{0}</textarea></span>")
+		SafeHtml cdata(String contents);
+		@SafeHtmlTemplates.Template("&lt;--{0}--&gt;")
+		SafeHtml comment(String contents);
+	}
+	private static Template template;
+	public class ElementCell extends AbstractEditableCell<Node, ViewState> {
+
 		private Object lastKey;
 
 
 		public ElementCell() {
+			super("blur", "focus", "keydown", "keyup");
 			if (template == null) {
 				template = GWT.create(Template.class);
 			}
@@ -178,12 +162,14 @@ public class XmlTreeViewModel implements TreeViewModel {
 
 			if (value instanceof Element) {
 				sb.append(template.element(value.getNodeName()));
-			} else if (value instanceof CharacterData) {
+			} else if (value instanceof CDATASection) {
 				sb.append(template.cdata(value.getNodeValue()));
 			} else if (value instanceof Text) {
 				sb.append(template.text(value.getNodeValue()));
 			} else if (value instanceof Attr) {
 				sb.append(template.attribute(((Attr)value).getName(), value.getNodeValue()));
+			} else if (value instanceof Comment) {
+				sb.append(template.comment(((Comment)value).getData()));
 			}
 		}
 
@@ -205,7 +191,7 @@ public class XmlTreeViewModel implements TreeViewModel {
 				assert value instanceof Attr;
 				return viewData.value.equals(value.getNodeValue());
 			case Content:
-				assert value instanceof CharacterData || value instanceof Text;
+				assert value instanceof CharacterData;
 				return viewData.value.equals(value.getNodeValue());
 			case None:
 			default:
@@ -235,9 +221,25 @@ public class XmlTreeViewModel implements TreeViewModel {
 			super.onBrowserEvent(context, parent, value, event, valueUpdater);
 			com.google.gwt.dom.client.Element target = event.getEventTarget().cast();
 
+			// Ignore events that don't target the input.
+			if (!"INPUT".equals(target.getTagName()) && !target.getTagName().equals("TEXTAREA")) {
+				return;
+			}
 
+			String eventType = event.getType();
+			if ("keyup".equals(eventType)) {
+				updateViewState(context.getKey(), value, target);
+			} else if ("focus".equals(eventType)) {
+
+				lastKey = context.getKey();
+			} else if ("blur".equals(eventType)) {
+				finishEdit(value, target);
+				valueUpdater.update(value);
+				lastKey = null;
+			}
 
 		}
+
 
 		@Override
 		protected void onEnterKeyDown(Cell.Context context,
@@ -245,7 +247,216 @@ public class XmlTreeViewModel implements TreeViewModel {
 				NativeEvent event, ValueUpdater<Node> valueUpdater) {
 			//if the event is directed at an input, finish editing, otherwise focus on first elt
 			com.google.gwt.dom.client.Element target = event.getEventTarget().cast();
-			//TODO
+			if (target.getTagName().equals("INPUT") || target.getTagName().equals("SELECT") || target.getTagName().equals("TEXTAREA")) {
+				finishEdit(value, target);
+				// TODO move focus to next field (if attr name, then value, if has children, 
+				// then first child, if has next sibling, then it, if parent has sibling, then it, 
+				// recursively)
+			} else {
+				this.lastKey = context.getKey();
+				parent.getFirstChildElement().focus();
+			}
 		}
+		/**
+		 * @param context
+		 * @param value
+		 */
+		private void finishEdit(Node value, com.google.gwt.dom.client.Element target) {
+			ViewState state = updateViewState(lastKey, value, target);
+			String newValue = target.<InputElement>cast().getValue();
+			boolean valid = true;
+			Element parent = (Element)value.getParentNode();
+			switch (state.section) {
+			case AttributeName:
+				Attr attr = (Attr) value;
+				//TODO this might lose namespace data
+				parent.removeAttribute(attr.getName());
+				parent.setAttribute(newValue, attr.getValue());
+
+
+				valid = validator.isAttributeNameValid(parent.getAttributeNode(attr.getName()));
+				break;
+			case AttributeValue:
+				value.setNodeValue(newValue);
+				valid = validator.isAttributeValueValid((Attr) value);
+				break;
+			case Content:
+				((CharacterData)value).setData(newValue);
+				valid = validator.isContentsValid((CharacterData) value);
+				break;
+			case TagName:
+				Element elt = (Element) value;
+				Element replacement = elt.getOwnerDocument().createElement(newValue);
+				while (elt.getChildNodes().getLength() != 0) {
+					replacement.appendChild(elt.getChildNodes().item(0));
+				}
+				//TODO this might lose namespace data
+				for (int i = 0; i < elt.getAttributes().getLength(); i++) {
+					Attr a = (Attr)elt.getAttributes().item(i);
+					replacement.setAttribute(a.getName(), a.getValue());
+				}
+
+				parent.replaceChild(replacement, elt);
+
+				valid = validator.isElementNameValid(replacement);
+			}
+			if (!valid) {
+				Window.alert("Seems to be invalid: " + newValue + " in " + parent.getNodeName());
+				//TODO mark invalid
+			}
+			this.lastKey = null;
+			target.blur();
+		}
+		private ViewState updateViewState(Object key, Node value,
+				com.google.gwt.dom.client.Element target) {
+			ViewState viewState = getViewData(key);
+			if (viewState == null) {
+				viewState = new ViewState();
+				setViewData(key, viewState);
+			}
+			viewState.section = ViewState.Section.getViewState(target, value);
+			viewState.value = target.<InputElement>cast().getValue();
+			return viewState;
+		}
+	}
+
+	private static class WrappedAttr implements Attr {
+		private final Attr attr;
+		private final Element elt;
+		public static WrappedAttr wrap(Attr attr, Element elt) {
+			if (attr instanceof WrappedAttr) {
+				return (WrappedAttr) attr;
+			}
+			return new WrappedAttr(attr, elt);
+		}
+		private WrappedAttr(Attr attr, Element elt) {
+			this.attr = attr;
+			this.elt = elt;
+		}
+		@Override
+		public Node appendChild(Node newChild) {
+			return attr.appendChild(newChild);
+		}
+
+		@Override
+		public Node cloneNode(boolean deep) {
+			return attr.cloneNode(deep);
+		}
+
+		@Override
+		public NamedNodeMap getAttributes() {
+			return attr.getAttributes();
+		}
+
+		@Override
+		public NodeList getChildNodes() {
+			return attr.getChildNodes();
+		}
+
+		@Override
+		public Node getFirstChild() {
+			return attr.getFirstChild();
+		}
+
+		@Override
+		public Node getLastChild() {
+			return attr.getLastChild();
+		}
+
+		@Override
+		public String getNamespaceURI() {
+			return attr.getNamespaceURI();
+		}
+
+		@Override
+		public Node getNextSibling() {
+			return attr.getNextSibling();
+		}
+
+		@Override
+		public String getNodeName() {
+			return attr.getNodeName();
+		}
+
+		@Override
+		public short getNodeType() {
+			return attr.getNodeType();
+		}
+
+		@Override
+		public String getNodeValue() {
+			return attr.getNodeValue();
+		}
+
+		@Override
+		public Document getOwnerDocument() {
+			return attr.getOwnerDocument();
+		}
+
+		@Override
+		public Node getParentNode() {
+			return elt;
+		}
+
+		@Override
+		public String getPrefix() {
+			return attr.getPrefix();
+		}
+
+		@Override
+		public Node getPreviousSibling() {
+			return attr.getPreviousSibling();
+		}
+
+		@Override
+		public boolean hasAttributes() {
+			return attr.hasAttributes();
+		}
+
+		@Override
+		public boolean hasChildNodes() {
+			return attr.hasChildNodes();
+		}
+
+		@Override
+		public Node insertBefore(Node newChild, Node refChild) {
+			return attr.insertBefore(newChild, refChild);
+		}
+
+		@Override
+		public void normalize() {
+			attr.normalize();
+		}
+
+		@Override
+		public Node removeChild(Node oldChild) {
+			return attr.removeChild(oldChild);
+		}
+
+		@Override
+		public Node replaceChild(Node newChild, Node oldChild) {
+			return attr.replaceChild(newChild, oldChild);
+		}
+
+		@Override
+		public void setNodeValue(String nodeValue) {
+			attr.setNodeValue(nodeValue);
+		}
+
+		@Override
+		public String getName() {
+			return attr.getName();
+		}
+
+		@Override
+		public boolean getSpecified() {
+			return attr.getSpecified();
+		}
+
+		@Override
+		public String getValue() {
+			return attr.getValue();
+		}
+
 	}
 }

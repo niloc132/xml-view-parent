@@ -41,14 +41,14 @@ public class SimpleRpcXmlValidator implements XmlValidator {
 
 
 	@Override
-	public boolean isAttributeNameValid(Attr attr) {
+	public boolean isAttributeNameValid(Attr attr, Element parent) {
 		//TODO make sure there are no attr duplicates (this is never legal, correct?)
-		return schema.getAllowedAttributes().get(attr.getParentNode().getNodeName()).contains(attr.getName());
+		return schema.getAllowedAttributes().get(parent.getNodeName()).contains(attr.getName());
 	}
 
 
 	@Override
-	public boolean isAttributeValueValid(Attr attr) {
+	public boolean isAttributeValueValid(Attr attr, Element parent) {
 		//TODO
 		return true;
 	}

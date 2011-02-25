@@ -16,12 +16,6 @@
  */
 package com.colinalworth.xmlview.client.validator;
 
-import java.lang.annotation.Documented;
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
-
 import com.google.gwt.xml.client.Attr;
 import com.google.gwt.xml.client.CharacterData;
 import com.google.gwt.xml.client.Element;
@@ -45,7 +39,7 @@ public interface XmlValidator {
 	 * @param attr
 	 * @return
 	 */
-	boolean isAttributeNameValid(Attr attr);
+	boolean isAttributeNameValid(Attr attr, Element parent);
 
 	/**
 	 * Checks that the value of the given attribute is consistent with the Element it is in
@@ -53,7 +47,7 @@ public interface XmlValidator {
 	 * @param attr
 	 * @return
 	 */
-	boolean isAttributeValueValid(Attr attr);
+	boolean isAttributeValueValid(Attr attr, Element parent);
 
 	/**
 	 * Checks to see if the data (CData or Text) are valid, both if allowed
@@ -63,16 +57,5 @@ public interface XmlValidator {
 	 */
 	boolean isContentsValid(CharacterData data);
 
-	@Documented
-	@Retention(RetentionPolicy.RUNTIME)
-	@Target(ElementType.TYPE)
-	public @interface SchemaURL {
-		String[] value();
-	}
-	@Documented
-	@Retention(RetentionPolicy.RUNTIME)
-	@Target(ElementType.TYPE)
-	public @interface SchemaPath {
-		String[] value();
-	}
+
 }

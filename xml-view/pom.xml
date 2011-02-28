@@ -1,26 +1,17 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<parent>
+		<groupId>com.colinalworth</groupId>
+		<artifactId>xml-view-parent</artifactId>
+		<version>0.0.1-SNAPSHOT</version>
+	</parent>
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.colinalworth</groupId>
 	<artifactId>xml-view</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<packaging>jar</packaging>
 	<name>Tools to create a simple GWT view for XML files</name>
-	<properties>
-		<gwt.version>2.2.0</gwt.version>
-		<gwt.plugin.version>2.1.1-SNAPSHOT</gwt.plugin.version>
 
-		<guice.version>3.0-rc2</guice.version>
-	</properties>
-	<pluginRepositories>
-		<pluginRepository>
-			<releases>
-				<enabled>false</enabled>
-			</releases>
-			<id>OLAMY</id>
-			<url>https://nexus.codehaus.org/content/groups/snapshots-group/</url>
-		</pluginRepository>
-	</pluginRepositories>
 	<dependencies>
 		<!-- Google Web Toolkit library -->
 		<dependency>

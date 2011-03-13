@@ -8,17 +8,9 @@
 	<name>Simple GWT view for XML files</name>
 	<properties>
 		<gwt.version>2.2.0</gwt.version>
-		<gwt.plugin.version>2.1.1-SNAPSHOT</gwt.plugin.version>
+		<gwt.plugin.version>2.2.0</gwt.plugin.version>
 	</properties>
-	<pluginRepositories>
-		<pluginRepository>
-			<releases>
-				<enabled>false</enabled>
-			</releases>
-			<id>OLAMY</id>
-			<url>https://nexus.codehaus.org/content/groups/snapshots-group/</url>
-		</pluginRepository>
-	</pluginRepositories>
+
 	<modules>
 		<module>xml-view</module>
 		<module>xml-view-sample</module>

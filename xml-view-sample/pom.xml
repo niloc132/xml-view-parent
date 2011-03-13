@@ -49,25 +49,15 @@
 		</dependency>
 		<!-- GWT Dependency Injection -->
 		<dependency>
-			<groupId>com.googlecode.gwt.inject</groupId>
+			<groupId>com.google.gwt.inject</groupId>
 			<artifactId>gin</artifactId>
-			<version>1.1-SNAPSHOT</version>
+			<version>1.5.0</version>
 		</dependency>
-		<!--<dependency>
-			<groupId>org.json</groupId>
-			<artifactId>json</artifactId>
-			<version>20090211</version>
-			<scope>provided</scope>
-		</dependency>
-		<dependency>
-			<groupId>com.sun.xsom</groupId>
-			<artifactId>xsom</artifactId>
-			<version>20100725</version>
-		</dependency>-->
+
 		<dependency>
 			<groupId>com.colinalworth</groupId>
 			<artifactId>xml-view</artifactId>
-			<version>0.0.1-SNAPSHOT</version>
+			<version>${project.version}</version>
 		</dependency>
 
 		<dependency>
@@ -76,7 +66,6 @@
 			<version>4.8.2</version>
 			<scope>test</scope>
 		</dependency>
-
 	</dependencies>
 
 	<build>

@@ -16,7 +16,7 @@
  */
 package com.colinalworth.xmlview.client;
 
-import com.colinalworth.xmlview.client.XmlTreeViewModel.XmlEditPopupPanel;
+import com.colinalworth.xmlview.client.XmlTreeViewModel.XmlEditContextMenu;
 import com.colinalworth.xmlview.client.validator.XmlValidator;
 import com.google.gwt.cell.client.AbstractEditableCell;
 import com.google.gwt.cell.client.Cell;
@@ -24,9 +24,11 @@ import com.google.gwt.cell.client.ValueUpdater;
 import com.google.gwt.core.client.GWT;
 import com.google.gwt.dom.client.InputElement;
 import com.google.gwt.dom.client.NativeEvent;
+import com.google.gwt.dom.client.NodeList;
 import com.google.gwt.safehtml.client.SafeHtmlTemplates;
 import com.google.gwt.safehtml.shared.SafeHtml;
 import com.google.gwt.safehtml.shared.SafeHtmlBuilder;
+import com.google.gwt.safehtml.shared.SafeHtmlUtils;
 import com.google.gwt.user.client.Window;
 import com.google.gwt.xml.client.Attr;
 import com.google.gwt.xml.client.CDATASection;
@@ -43,16 +45,27 @@ import com.google.gwt.xml.client.Text;
  */
 public class ElementCell extends AbstractEditableCell<Node, ElementCell.ViewState> {
 	interface Templates extends SafeHtmlTemplates {
-		@Template("<span class='data'>&lt;<input type=\"text\" value=\"{0}\" />&gt;</span><span class='actions'>[V]</span>")
-		SafeHtml element(String nodeName);
-		@Template("<span><input class=\"attrName\" type=\"text\" value=\"{0}\" /> = <input class=\"attrValue\" type=\"text\" value=\"{1}\" /></span>")
-		SafeHtml attribute(String name, String value);
-		@Template("<span>#text <textarea>{0}</textarea></span>")
-		SafeHtml text(String contents);
-		@Template("<span>#cdata <textarea>{0}</textarea></span>")
-		SafeHtml cdata(String contents);
+
+		@Template("<span class='data'>&lt;{0}&gt;</span><span class='actions'>[V]</span>")
+		SafeHtml element(SafeHtml nodeName);
+
+		@Template("<span>{0} = {1}</span>")
+		SafeHtml attribute(SafeHtml name, SafeHtml value);
+
+		@Template("<span>#text {0}</span>")
+		SafeHtml text(SafeHtml contents);
+
+		@Template("<span>#cdata {0}</span>")
+		SafeHtml cdata(SafeHtml contents);
+
 		@Template("&lt;--{0}--&gt;")
 		SafeHtml comment(String contents);
+
+
+		@Template("<input type=\"text\" value=\"{0}\" />")
+		SafeHtml input(String value);
+		@Template("<textarea>{0}</textarea>")
+		SafeHtml textarea(String value);
 	}
 
 	static class ViewState {
@@ -62,7 +75,7 @@ public class ElementCell extends AbstractEditableCell<Node, ElementCell.ViewStat
 				if (node instanceof Element) {
 					return Section.TagName;
 				} else if (node instanceof Attr) {
-					return elt.getClassName().contains("attrName") ? Section.AttributeName: Section.AttributeValue;
+					return elt.getPreviousSibling() == null ? Section.AttributeName: Section.AttributeValue;
 				} else if (node instanceof CharacterData) {
 					return Section.Content;
 				}
@@ -75,13 +88,13 @@ public class ElementCell extends AbstractEditableCell<Node, ElementCell.ViewStat
 	}
 
 	private static Templates template;
-	private final XmlEditPopupPanel menu;
+	private final XmlEditContextMenu menu;
 
 	private final XmlValidator validator;
 	private Object lastKey;
 
 
-	public ElementCell(XmlValidator validator, XmlEditPopupPanel menu) {
+	public ElementCell(XmlValidator validator, XmlEditContextMenu menu) {
 		super("blur", "focus", "keydown", "keyup", "click");
 		if (template == null) {
 			template = GWT.create(Templates.class);
@@ -99,22 +112,37 @@ public class ElementCell extends AbstractEditableCell<Node, ElementCell.ViewStat
 			clearViewData(key);
 			viewData = null;
 		}
-
-		if (value instanceof Element) {
-			sb.append(template.element(value.getNodeName()));
-		} else if (value instanceof CDATASection) {
-			sb.append(template.cdata(value.getNodeValue()));
-		} else if (value instanceof Text) {
-			sb.append(template.text(value.getNodeValue()));
-		} else if (value instanceof Attr) {
-			sb.append(template.attribute(((Attr)value).getName(), value.getNodeValue()));
-		} else if (value instanceof Comment) {
-			sb.append(template.comment(((Comment)value).getData()));
+		if (viewData != null) {
+			if (value instanceof Element) {
+				sb.append(template.element(template.input(value.getNodeName())));
+			} else if (value instanceof CDATASection) {
+				sb.append(template.cdata(template.textarea(value.getNodeValue())));
+			} else if (value instanceof Text) {
+				sb.append(template.text(template.textarea(value.getNodeValue())));
+			} else if (value instanceof Attr) {
+				sb.append(template.attribute(template.input(((Attr)value).getName()), template.input(value.getNodeValue())));
+			} else if (value instanceof Comment) {
+				sb.append(template.comment(((Comment)value).getData()));
+			}
+		} else {
+			if (value instanceof Element) {
+				sb.append(template.element(SafeHtmlUtils.fromString(value.getNodeName())));
+			} else if (value instanceof CDATASection) {
+				sb.append(template.cdata(SafeHtmlUtils.fromString(value.getNodeValue())));
+			} else if (value instanceof Text) {
+				sb.append(template.text(SafeHtmlUtils.fromString(value.getNodeValue())));
+			} else if (value instanceof Attr) {
+				sb.append(template.attribute(SafeHtmlUtils.fromString(((Attr)value).getName()), SafeHtmlUtils.fromString(value.getNodeValue())));
+			} else if (value instanceof Comment) {
+				sb.append(template.comment(((Comment)value).getData()));
+			}
 		}
 	}
 
 
 	/**
+	 * Checks if the local view-state info matches the actual value of the tree node, by
+	 * comparing the type of the data, then the value, based on the type.
 	 * @param viewData
 	 * @param value
 	 * @return
@@ -147,11 +175,33 @@ public class ElementCell extends AbstractEditableCell<Node, ElementCell.ViewStat
 	@Override
 	public boolean resetFocus(Cell.Context context, com.google.gwt.dom.client.Element parent, Node value) {
 		if (isEditing(context, parent, value)) {
-			//TODO focus correct element
+			getActiveInput(parent).focus();
 			return true;
 		}
 
 		return false;
+	}
+
+	/**
+	 * @param parent
+	 * @return
+	 */
+	private com.google.gwt.dom.client.Element getActiveInput(
+			com.google.gwt.dom.client.Element parent) {
+		NodeList<com.google.gwt.dom.client.Element> elts = parent.getElementsByTagName("input");
+		if (elts.getLength() == 1) {
+			return elts.getItem(0);
+		} else {
+			assert elts.getLength() == 2;
+			switch (getViewData(lastKey).section) {
+			case AttributeName:
+				return elts.getItem(0);
+			case AttributeValue:
+				return elts.getItem(1);
+			default:
+				throw new UnsupportedOperationException();
+			}
+		}
 	}
 
 	@Override
@@ -162,26 +212,37 @@ public class ElementCell extends AbstractEditableCell<Node, ElementCell.ViewStat
 		com.google.gwt.dom.client.Element target = event.getEventTarget().cast();
 
 		String eventType = event.getType();
+
+		// if the user clicked on the context menu, show it
 		if ("click".equals(eventType) && target.getClassName().equals("actions")) {
 			menu.setPopupPosition(event.getClientX(), event.getClientY());
 			menu.show(value);
 			return;
 		}
 
-		// Ignore events that don't target the input.
-		if (!"INPUT".equals(target.getTagName()) && !target.getTagName().equals("TEXTAREA")) {
-			return;
-		}
-
-		if ("keyup".equals(eventType)) {
-			updateViewState(context.getKey(), value, target);
-		} else if ("focus".equals(eventType)) {
-
-			lastKey = context.getKey();
-		} else if ("blur".equals(eventType)) {
-			finishEdit(value, target);
-			valueUpdater.update(value);
-			lastKey = null;
+		// otherwise, if the user is currently editing, interpret their commands as edit comands
+		if (isEditing(context, parent, value)) {
+			// Ignore events that don't target the input.
+			if (!"INPUT".equals(target.getTagName()) && !target.getTagName().equals("TEXTAREA")) {
+				return;
+			}
+			if ("keyup".equals(eventType)) {
+				updateViewState(context.getKey(), value, target);
+			} else if ("focus".equals(eventType)) {
+				lastKey = context.getKey();
+				updateViewState(context.getKey(), value, target);
+			} else if ("blur".equals(eventType)) {
+				finishEdit(value, target);
+				valueUpdater.update(value);
+				lastKey = null;
+			}
+		} else {// last, if not context, and not editing, they are trying to edit, so focus
+			if ("click".equals(eventType)) {
+				lastKey = context.getKey();
+				updateViewState(context.getKey(), value, target);
+				setValue(context, parent, value);
+				getActiveInput(parent).focus();
+			}
 		}
 
 	}
@@ -255,9 +316,9 @@ public class ElementCell extends AbstractEditableCell<Node, ElementCell.ViewStat
 		target.blur();
 	}
 
-	private ElementCell.ViewState updateViewState(Object key, Node value,
+	private ViewState updateViewState(Object key, Node value,
 			com.google.gwt.dom.client.Element target) {
-		ElementCell.ViewState viewState = getViewData(key);
+		ViewState viewState = getViewData(key);
 		if (viewState == null) {
 			viewState = new ElementCell.ViewState();
 			setViewData(key, viewState);

@@ -44,9 +44,9 @@ import com.google.gwt.xml.client.NodeList;
  *
  */
 public class XmlTreeViewModel implements TreeViewModel {
-	public class XmlEditPopupPanel extends PopupPanel {
+	public class XmlEditContextMenu extends PopupPanel {
 		private Node node;
-		public XmlEditPopupPanel() {
+		public XmlEditContextMenu() {
 			super(true, true);
 		}
 		public void show(Node node) {
@@ -92,9 +92,11 @@ public class XmlTreeViewModel implements TreeViewModel {
 			parent.removeChild(node);
 		}
 	}
+
 	private final XmlTreeMenuOptions i18n = GWT.create(XmlTreeMenuOptions.class);
+
 	private final ElementCell nodeCell;
-	private final XmlEditPopupPanel contextMenu;
+	private final XmlEditContextMenu contextMenu;
 	private final Map<Node, ValueUpdater<Node>> refreshAccess;
 	/**
 	 * 
@@ -114,7 +116,7 @@ public class XmlTreeViewModel implements TreeViewModel {
 		subMenu.addItem(i18n.addElement(), new NewElementCommand());
 		subMenu.addItem(i18n.addAttr(), new NewAttrCommand());
 		subMenu.addItem(i18n.addText(), new NewTextCommand());
-		contextMenu = new XmlEditPopupPanel();
+		contextMenu = new XmlEditContextMenu();
 
 		contextMenu.setWidget(subMenu);
 		contextMenu.addCloseHandler(new CloseHandler<PopupPanel>() {
@@ -138,7 +140,9 @@ public class XmlTreeViewModel implements TreeViewModel {
 				dataProvider.setList(getChildren(node));
 			}
 		};
+		//TODO this has the ability to leak as nodes are replaced - clear periodically?
 		refreshAccess.put(node, parentUpdater);
+
 		DefaultNodeInfo<Node> nodeInfo = new DefaultNodeInfo<Node>(dataProvider, nodeCell, null, parentUpdater);
 		return nodeInfo;
 	}
@@ -147,7 +151,7 @@ public class XmlTreeViewModel implements TreeViewModel {
 	public boolean isLeaf(Object value) {
 		Node node = (Node)value;
 		if (node instanceof Document) {
-			//TODO consider replacing this with return true
+			//TODO consider replacing this with return true, as an empty document is useless
 			return !node.hasChildNodes();
 		} else if (node instanceof Element) {
 			//is not a leaf if it has children, or if it has attributes
@@ -187,6 +191,13 @@ public class XmlTreeViewModel implements TreeViewModel {
 		return list;
 	}
 
+	/**
+	 * IE has poor support for getting the Node that an Attr belongs to, and so GWT does not support
+	 * this functionality at all. This wrapper class acts like an AttrImpl instance, except that
+	 * it has a reference to the parent, and can return it when asked.
+	 * @author colin
+	 *
+	 */
 	private static class WrappedAttr implements Attr {
 		private final Attr attr;
 		private final Element elt;

@@ -104,8 +104,11 @@ public abstract class AbstractSchemaImpl implements Schema {
 	 */
 	private Set<Schema.NamespacedNode> wrap(JsArray<NamespacedNodeJSO> jsArray) {
 		Set<Schema.NamespacedNode> nodes = new HashSet<Schema.NamespacedNode>();
-		for (int i = 0; i < jsArray.length(); i++) {
-			nodes.add(jsArray.get(i));
+
+		if (jsArray != null) {
+			for (int i = 0; i < jsArray.length(); i++) {
+				nodes.add(jsArray.get(i));
+			}
 		}
 
 		return nodes;

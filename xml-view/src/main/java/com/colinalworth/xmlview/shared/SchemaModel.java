@@ -20,6 +20,9 @@ import java.util.Map;
 import java.util.Set;
 
 /**
+ * Basic schema model for transport over RPC
+ * 
+ * @todo deal with namespaces
  * @author colin
  *
  */

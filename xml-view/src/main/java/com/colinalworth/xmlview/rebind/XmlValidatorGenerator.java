@@ -173,7 +173,7 @@ public class XmlValidatorGenerator extends Generator {
 		 */
 		public ValidatorCreator(String simpleSourceName, Sources sources, GeneratorContext context, 
 				TreeLogger logger, SourceWriter sw) throws UnableToCompleteException {
-			this.logger = logger.branch(Type.INFO, "Creating validator impl for " + simpleSourceName);
+			this.logger = logger.branch(Type.DEBUG, "Creating validator impl for " + simpleSourceName);
 			this.simpleSourceName = simpleSourceName;
 			this.sw = sw;
 			this.context = context;
@@ -181,7 +181,7 @@ public class XmlValidatorGenerator extends Generator {
 			this.elementAttributes = new HashMap<NamespacedElement, Set<XSAttributeDecl>>();
 
 			try {
-				final TreeLogger parsingLogger = logger.branch(Type.INFO, "Reading schemas");
+				final TreeLogger parsingLogger = logger.branch(Type.DEBUG, "Reading schemas");
 				XSOMParser parser = new XSOMParser();
 				parser.setErrorHandler(new ErrorHandler() {
 					@Override
@@ -221,7 +221,7 @@ public class XmlValidatorGenerator extends Generator {
 
 				while (!elements.isEmpty()) {
 					NamespacedElement elt = new NamespacedElement(elements.removeFirst());
-					TreeLogger l = parsingLogger.branch(Type.INFO, elt.getElement().getName());
+					TreeLogger l = parsingLogger.branch(Type.DEBUG, elt.getElement().getName());
 					Set<XSElementDecl> subElts = elementChildren.get(elt);
 					Set<XSAttributeDecl> attrs = elementAttributes.get(elt);
 					if (!elementChildren.containsKey(elt)) {
@@ -231,11 +231,11 @@ public class XmlValidatorGenerator extends Generator {
 					}
 
 					if (elt.getElement().getType().isSimpleType()) {
-						l.log(Type.INFO, elt.getElement().getType().getName());
+						l.log(Type.DEBUG, elt.getElement().getType().getName());
 					} else {
 						XSComplexType complex = elt.getElement().getType().asComplexType();
 						for (XSAttributeUse attr : complex.getAttributeUses()) {
-							l.log(Type.INFO, attr.getDecl().getName());
+							l.log(Type.DEBUG, attr.getDecl().getName());
 							attrs.add(attr.getDecl());
 						}
 						XSParticle content = complex.getContentType().asParticle();
@@ -250,7 +250,7 @@ public class XmlValidatorGenerator extends Generator {
 										// this check is needed to be sure we don't look for children
 										// twice
 										if (!subElts.contains(pterm.asElementDecl())) {
-											l.log(Type.INFO, pterm.asElementDecl().getName());
+											l.log(Type.DEBUG, pterm.asElementDecl().getName());
 											elements.add(pterm.asElementDecl());
 											subElts.add(pterm.asElementDecl());
 										}
@@ -277,7 +277,7 @@ public class XmlValidatorGenerator extends Generator {
 		 * 
 		 */
 		public void generateCtor() throws UnableToCompleteException {
-			TreeLogger l = logger.branch(Type.INFO, "Creating constructor");
+			TreeLogger l = logger.branch(Type.DEBUG, "Creating constructor");
 			sw.println("public %1$s() {", simpleSourceName);
 			sw.indent();
 			sw.println("super(getAttrs(), getElts());");
@@ -289,15 +289,15 @@ public class XmlValidatorGenerator extends Generator {
 		 * 
 		 */
 		public void generateMethods() throws UnableToCompleteException {
-			TreeLogger l = logger.branch(Type.INFO, "Creating data creator methods");
+			TreeLogger l = logger.branch(Type.DEBUG, "Creating data creator methods");
 
-			sw.println("static native JsArray getAttrs() /*-{");
+			sw.println("private static final native JsArray getAttrs() /*-{");
 			sw.indent();
 			sw.println("return %1$s;", generateElementAttributeMap());
 			sw.outdent();
 			sw.println("}-*/;");
 
-			sw.println("static native JsArray getElts() /*-{");
+			sw.println("private static final native JsArray getElts() /*-{");
 			sw.indent();
 			sw.println("return %1$s;", generateElementChildMap());
 			sw.outdent();
@@ -346,7 +346,7 @@ public class XmlValidatorGenerator extends Generator {
 					for (XSAttributeDecl child : this.elementAttributes.get(parent)) {
 						inner.put(child.getName(), true);
 					}
-					namespace.put(parent.getIdentifier(), inner);
+					namespace.put(parent.getElement().getName(), inner);
 				}
 			} catch (JSONException e) {
 				e.printStackTrace();
